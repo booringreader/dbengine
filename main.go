@@ -4,7 +4,94 @@ import (
 	"fmt"
 	"os"
 	"encoding/json"
+	"sync"
+	"github.com/jcelliott/lumber" //? for logging
+	"path/filepath"
 )
+
+const Version = "1.0.0"
+
+type (
+	Logger interface{
+		Fatal(string, ...interface{})
+		Error(string, ...interface{}) 
+		Warn(string, ...interface{}) 
+		Info(string, ...interface{}) 
+		Debug(string, ...interface{}) 
+		Trace(string, ...interface{}) 
+	}
+
+	dbDriver struct {
+		mutex sync.Mutex,
+		mutexes map[string]*sync.Mutex,
+		dir string,
+		log Logger
+	}
+)
+
+type Options struct{
+	Logger
+}
+
+func new(dir string, options *Options)(*dbDriver, error) { // accept multiple arguments, return multiple values
+dir = filepath.Clean(dir)
+
+opts := Options{}
+if options != nil{
+	opts := *options
+}
+
+if opts.Logger == nil{
+	opts.Logger = lumber.NewConsoleLogger((lumber.Info))
+}
+
+driver := dbDriver{
+	log: opts.Logger,
+	mutexes: make(map[string]*sync.Mutex),
+	dir: dir
+}
+
+//! checking for existing databases (before creating new)
+if _, err := os.Stat(dir); err == nil{
+	opts.Logger.Debug("Using '%s' (database already exists)\n", dir)
+	return &driver, nil
+}
+
+opts.Logger.Debug("Creating the database at '%s'...\n", dir)
+return &driver, os.MkdirAll(dir, 0755) // chmod +755
+}
+
+//! struct method
+func (d *dbDriver) Write() error { // write to db, else return error
+
+}
+
+//! struct method
+func (d *dbDriver) Read() error{ // read from db, or return error
+	
+}
+
+//! struct method
+func ReadAll()(){ // read from db, and return multiple values
+
+}
+
+//! struct method
+func Delete() error{ // if cannot delete, return error
+
+}
+
+//! struct method
+func getOrCreateMutex() *sync.Mutex { // take things and return mutex
+
+}
+
+func stat(path string)(fi os.FileInfo, err error){
+	if fi, err = os.Stat(path); os.IsNotExist(err){
+		fi, err = os.Stat(path + ".json")
+	}
+	return
+}
 
 type Address struct {
 	Street string
@@ -62,7 +149,7 @@ func main(){
 	*	`records` is a slice of type `User`
 	*	`records` is of type json, so to be able to use it in go,
 	*	we need to unmarshal it into a slice of type `User`
-	*	unmarshalling will conver the json data into a go struct
+	*	unmarshalling will convert the json data into a go struct
 	*/
 
 	allusers := []User{}
@@ -72,7 +159,16 @@ func main(){
 
 		allusers = append(allusers, employeeFound)
 	}
-	fmt.Println(allusers)
+	fmt.Println((allusers))
 
+	// if err:= db.Delete("user", "john"); 
+	// err != nil{
+	// 	fmt.Println("Error:", err)
+	// }
+
+	// if err:= db.DeleteAll("user", "");
+	// err != nil{
+	// 	fmt.Println("Erro:", err)
+	// }
 
 }
