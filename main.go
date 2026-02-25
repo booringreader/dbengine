@@ -7,6 +7,7 @@ import (
 	"sync"
 	"github.com/jcelliott/lumber" //? for logging
 	"path/filepath"
+	"io/ioutil"
 )
 
 const Version = "1.0.0"
@@ -62,13 +63,59 @@ return &driver, os.MkdirAll(dir, 0755) // chmod +755
 }
 
 //! struct method
-func (d *dbDriver) Write() error { // write to db, else return error
+func (d *dbDriver) Write(collection, resource string, v interface{}) error { // write to db, else return error
+	if collection == ""{
+		fmt.Errorf("Missing Collection - no place to save record...")
+	}
+	if resource == ""{
+		fmt.Errorf("Missing resource - unable to save record(no name/resource found)..")
+	}
 
+	mutex := d.getOrCreateMutex(collection)
+	mutex.Lock()
+
+	defer mutex.Unlock()
+
+	dir := filepath.Join(d.dir, collection)
+	finalpath := filepath.Join(dir, resource+".json")
+	tempPath = filepath + ".tmp"
+
+	b, err := json.MarhsalIndent(v, "", "\t")
+	if err != nil{
+		return err
+	}
+
+	b = append(b, byte('\n'))
+
+	if err := ioutil.WriteFile(tempPath, b, 0644); err != nil{
+		return err
+	}
+
+	return os.Rename(tempPath, finalpath)
 }
 
 //! struct method
-func (d *dbDriver) Read() error{ // read from db, or return error
+func (d *dbDriver) Read(collection, resource string, v interface{}) error{ // read from db, or return error
 	
+	if collection == ""{
+		fmt.Errorf("Missing Collection - no place to extract record...")
+	}
+	if resource == ""{
+		fmt.Errorf("Missing resource - unable to read record(no name/resource found)..")
+	}
+
+	record := filepath.Join(d.dir, collection, resource)
+
+	if _, err := stat(record); err != nil{
+		return err
+	}
+
+	b, err := ioutil.Read(record + ".json")
+	if err != nil{
+		return err
+	}
+
+	return json.Unmarshal(b, &v)
 }
 
 //! struct method
@@ -82,8 +129,16 @@ func Delete() error{ // if cannot delete, return error
 }
 
 //! struct method
-func getOrCreateMutex() *sync.Mutex { // take things and return mutex
+func getOrCreateMutex(collection string) *sync.Mutex { // take things and return mutex
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
 
+	m, ok := mutexes[collection]
+	if !ok {
+		m = &sync.Mutex{}
+		d.mutexes[collection] = m
+	}
+	return m
 }
 
 func stat(path string)(fi os.FileInfo, err error){
